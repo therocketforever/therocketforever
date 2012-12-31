@@ -21,6 +21,8 @@ end
 When /^I create an "(.*?)" with an EmbededImage$/ do |d_obj_type|
   @d_obj = Object.const_get(d_obj_type.to_sym).create
   @embeded_image = @d_obj.embeded_images.create
+  @d_obj.images.any?.should == true
+  @d_obj.images.empty?.should == false
 end
 
 Then /^I should be able to load the Article's EmbededImage\(s\)$/ do
