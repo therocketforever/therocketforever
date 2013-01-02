@@ -76,6 +76,8 @@ module Taggable
 
   property :id, Serial
   property :name, String
+
+  #has n :tags, :through => Resource 
 end
 
 # DObject is a common root object to be inherited from by all objects requireing persistance to the DB. DObject deffines common opperational tasks for the various model objects.
@@ -103,7 +105,7 @@ end
 
 class Article < DObject
   #include ActsAsArticle
-  remix n, :taggables, :as => "tags"
+  remix n, :taggables, :for => "Article", :via => :article_tags, :as => "tags"
   
   property :title, String
   property :body, Text
@@ -117,7 +119,7 @@ end
 
 class Image < DObject
   #include ActsAsImage
-  remix n, :taggables, :as => "tags"
+  remix n, :taggables, :for => "Image", :via => :image_tags, :as => "tags"
   
   property :title, String
   property :caption, Text
@@ -126,10 +128,16 @@ end
 
 class EmbededImage < Image
   #include ActsAsImage
-  remix n, :taggables, :as => "tags"
+  remix n, :taggables, :for => "EmbededImage", :via => :emgeded_image_tags, :as => "tags"
 
   has n, :articles, :through => Resource
 end
+
+#class Tag < DObject
+#  property :id, Serial
+#
+#  has n, :taggables, :through => Resource
+#end
 
 DataMapper.finalize.auto_migrate!
 
