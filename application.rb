@@ -13,7 +13,22 @@ class Application < Sinatra::Base
   end
 
   configure :production do
-    #ENV['DATABASE_URL'] || 
+    #ENV['DATABASE_URL'] || DataMapper.setup(:default, "sqlite://#{Dir.pwd}/development.db") 
+  end
+
+  helpers do
+    def evaluate_path
+     @target = case request.path
+        when '/red'
+          :_red
+        when '/blue'
+          :_blue
+        when '/gold'
+          :_gold
+        else
+          :_red
+      end
+    end
   end
 
   get "/style.css" do
@@ -23,6 +38,8 @@ class Application < Sinatra::Base
 
   get "/" do
     @title = "therocketforever"
+    @articles = Article.all :order => :weight.asc
+    evaluate_path
     haml :index
   end
 end
@@ -68,6 +85,52 @@ class Agent
   end
 end
 
+
+# Libraian indexes & manages content.
+class Librarian < Agent
+  def self.index
+    #puts "indexing articles..."
+    @index = []
+    Dir["./articles/*.md"].each do |f|
+      article = File.read(f).split("---\n")
+      meta = YAML::load(article[0])
+      @index.push({
+        :title => meta[:title],
+        :section => meta[:section],
+        :created_at =>  File.ctime(f),
+        :updated_at => File.mtime(f),
+        :tags => meta[:tags].split(', ').each { |t| t.to_sym}, 
+        :type => :article,
+        :weight => meta[:weight],
+        :body => article[1]
+      })
+    end 
+    return @index
+  end
+  
+  def self.encode(articles = Librarian.index)
+    articles.each do |a|
+      #article = Article.new
+      #article.created_at = a[:created_at]
+      #article.updated_at = a[:updated_at]
+      #article.type = a[:type]
+      #article.weight = a[:weight]
+      #article.body = a[:body]
+      #article.save
+      
+      Article.create(
+        :created_at => a[:created_at],
+        :updated_at => a[:updated_at],
+        #:tags => nil,
+        #:type => a[:type],
+        :weight => a[:weight],
+        :body => a[:body],
+      )
+      puts "encodeing item #{a[:title]}"
+    end
+  end
+end
+
 ## Database Magic ##
 
 module Taggable
@@ -106,6 +169,7 @@ class Article < DObject
   remix n, :taggables, :as => "tags"
   
   property :title, String
+  property :weight, Integer
   property :body, Text
 
   has n, :embeded_images, :through => Resource
@@ -116,7 +180,7 @@ class Article < DObject
 end
 
 class Image < DObject
-  #include ActsAsImage
+  include ActsAsImage
   remix n, :taggables, :as => "tags"
   
   property :title, String
@@ -125,13 +189,13 @@ class Image < DObject
 end
 
 class EmbededImage < Image
-  #include ActsAsImage
+  include ActsAsImage
   remix n, :taggables, :as => "tags"
 
   has n, :articles, :through => Resource
 end
 
-DataMapper.finalize.auto_migrate!
+DataMapper.finalize.auto_upgrade!
 
 Binding.pry unless ENV['RACK_ENV'].to_sym == :test
 __END__
@@ -152,21 +216,30 @@ __END__
 
 @@index
 %p I am Index!!
+.content 
+  = haml @target
 
-@@command
-% I am @@command!!
+@@_red
+%p I am @@_red!!
+= haml :_articles
 
-@@operations
-%p I am @@operations!!
+@@_gold
+%p I am @@_gold!!
 
-@@science
-%p I am @@science!!
+@@-blue
+%p I am @@_blue!!
 
 @@_articles
 %p I am @@_articles!!
+%section.articles
+  - @articles.each do |article|
+    = haml :_article, :locals => {:article => article}
 
 @@_article
-%p I am @@_article!!
+%article
+  %p I am @@_article!!
+  %h3= article.title
+  = markdown(article.body)
 
 @@_images
 %p I am @@_images!!
