@@ -320,7 +320,7 @@ section.articles
 		== slim :article, locals: { article: article}
 
 @@article
-article
+article id = article.title.gsub(/[^0-9a-z]/i, '').downcase
 	section.article_title
 		h2.i_am_yellow = article.title unless article.title.nil?
 	section.article_body
